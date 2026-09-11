@@ -1,0 +1,49 @@
+function doPost(e) {
+  var lock = LockService.getScriptLock();
+  lock.tryLock(10000);
+
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow(["Timestamp", "Naam", "WhatsApp / Telefoonnummer", "Wat verkoop je?"]);
+      sheet.getRange(1, 1, 1, 4).setFontWeight("bold").setBackground("#e2e8f0");
+    }
+
+    var data = {};
+    if (e.postData && e.postData.contents) {
+      try {
+        data = JSON.parse(e.postData.contents);
+      } catch (err) {
+        data = e.parameter;
+      }
+    } else {
+      data = e.parameter;
+    }
+
+    var timestamp = new Date();
+    var naam = data.naam || "";
+    var whatsapp = data.whatsapp || "";
+    var business = data.business || "";
+
+    sheet.appendRow([timestamp, naam, whatsapp, business]);
+
+    return ContentService
+      .createTextOutput(JSON.stringify({ result: "success", row: sheet.getLastRow() }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ result: "error", error: error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function doGet(e) {
+  return ContentService
+    .createTextOutput("MarketTribe Vendor Signup API is actief.")
+    .setMimeType(ContentService.MimeType.TEXT);
+}
