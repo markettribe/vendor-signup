@@ -1,49 +1,186 @@
-function doPost(e) {
-  var lock = LockService.getScriptLock();
-  lock.tryLock(10000);
-
-  try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow(["Timestamp", "Naam", "WhatsApp / Telefoonnummer", "Wat verkoop je?"]);
-      sheet.getRange(1, 1, 1, 4).setFontWeight("bold").setBackground("#e2e8f0");
-    }
-
-    var data = {};
-    if (e.postData && e.postData.contents) {
-      try {
-        data = JSON.parse(e.postData.contents);
-      } catch (err) {
-        data = e.parameter;
-      }
-    } else {
-      data = e.parameter;
-    }
-
-    var timestamp = new Date();
-    var naam = data.naam || "";
-    var whatsapp = data.whatsapp || "";
-    var business = data.business || "";
-
-    sheet.appendRow([timestamp, naam, whatsapp, business]);
-
-    return ContentService
-      .createTextOutput(JSON.stringify({ result: "success", row: sheet.getLastRow() }))
-      .setMimeType(ContentService.MimeType.JSON);
-
-  } catch (error) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ result: "error", error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
-
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-function doGet(e) {
-  return ContentService
-    .createTextOutput("MarketTribe Vendor Signup API is actief.")
-    .setMimeType(ContentService.MimeType.TEXT);
-}
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarketTribe — Word Vendor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --navy: #1E2B4F;
+            --navy-light: #2A3A63;
+            --navy-dark: #141E38;
+            --orange: #FF6B00;
+            --orange-hover: #E86000;
+            --orange-light: #FFF3E8;
+            --gold: #F5A623;
+            --gold-light: #FFF8E7;
+            --white: #FFFFFF;
+            --gray-50: #F8F9FB;
+            --gray-100: #F0F2F5;
+            --gray-300: #D1D5DB;
+            --gray-500: #6B7280;
+            --gray-700: #374151;
+            --gray-900: #111827;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--navy);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background:
+                radial-gradient(ellipse at 10% 20%, rgba(245,166,35,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 90% 80%, rgba(255,107,0,0.04) 0%, transparent 50%);
+            pointer-events: none;
+        }
+        .container {
+            background: var(--white);
+            border-radius: 20px;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.3);
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+        }
+        .header {
+            background: var(--navy);
+            padding: 32px 30px 28px;
+            text-align: center;
+        }
+        .logo h1 { font-size: 28px; color: var(--white); font-weight: 900; margin-bottom: 8px; }
+        .logo span { color: var(--orange); }
+        .tagline {
+            font-size: 11px; color: var(--gold); font-weight: 700;
+            letter-spacing: 2.5px; text-transform: uppercase; margin-bottom: 14px;
+        }
+        .headline { color: var(--white); font-size: 20px; font-weight: 800; line-height: 1.3; }
+        .body { padding: 28px 30px 32px; }
+        .subtitle {
+            text-align: center; color: var(--gray-500); font-size: 14px;
+            margin-bottom: 20px; line-height: 1.6;
+        }
+        .features { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 22px; }
+        .feature {
+            display: inline-flex; align-items: center; gap: 5px;
+            background: var(--orange-light); color: var(--orange);
+            padding: 7px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+        }
+        .badge-row { text-align: center; margin-bottom: 24px; }
+        .badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: var(--gold-light); color: var(--navy);
+            padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 700;
+        }
+        .form-group { margin-bottom: 16px; }
+        label { display: block; font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+        input {
+            width: 100%; padding: 14px 16px; border: 2px solid var(--gray-100);
+            border-radius: 12px; font-size: 15px; font-family: 'Inter', sans-serif;
+            transition: all 0.2s; outline: none; background: var(--gray-50); color: var(--gray-900);
+        }
+        input:focus { border-color: var(--orange); background: var(--white); box-shadow: 0 0 0 3px rgba(255,107,0,0.1); }
+        input::placeholder { color: var(--gray-300); }
+        .btn {
+            width: 100%; padding: 16px; background: var(--orange); color: var(--white);
+            border: none; border-radius: 12px; font-size: 16px; font-weight: 800;
+            font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.2s;
+            margin-top: 8px; box-shadow: 0 4px 16px rgba(255,107,0,0.3);
+        }
+        .btn:hover { background: var(--orange-hover); transform: translateY(-1px); }
+        .btn:disabled { background: var(--gray-300); cursor: not-allowed; box-shadow: none; transform: none; }
+        .footer { text-align: center; margin-top: 18px; font-size: 12px; color: var(--gray-500); line-height: 1.5; }
+        .footer strong { color: var(--navy); }
+        .success { display: none; text-align: center; }
+        .success-header { background: var(--navy); padding: 40px 30px; }
+        .success-header .check { font-size: 56px; margin-bottom: 12px; }
+        .success-header h2 { color: var(--white); font-size: 24px; font-weight: 900; }
+        .success-header h2 span { color: var(--orange); }
+        .success-body { padding: 28px 30px 36px; }
+        .success-body p { color: var(--gray-500); font-size: 15px; line-height: 1.7; margin-bottom: 20px; }
+        .success-body .tribe-text { color: var(--navy); font-weight: 700; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="formSection">
+            <div class="header">
+                <div class="logo"><h1>Market<span>Tribe</span></h1></div>
+                <p class="tagline">For Everyone, By Everyone</p>
+                <p class="headline">Jouw producten.<br>Jouw shop. Jouw klanten.</p>
+            </div>
+            <div class="body">
+                <p class="subtitle">Meld je gratis aan als vendor en krijg je eigen online shop op MarketTribe.</p>
+                <div class="features">
+                    <div class="feature">🛍️ Eigen shop</div>
+                    <div class="feature">🚴 Rider bezorging</div>
+                </div>
+                <div class="badge-row"><span class="badge">⚡ Duurt maar 30 seconden</span></div>
+                <form id="vendorForm" onsubmit="submitForm(event)">
+                    <div class="form-group">
+                        <label>Jouw naam</label>
+                        <input type="text" id="naam" placeholder="Bijv. Nora Kartodikromo" required>
+                    </div>
+                    <div class="form-group">
+                        <label>WhatsApp nummer</label>
+                        <input type="tel" id="whatsapp" placeholder="+597 ..." required>
+                    </div>
+                    <div class="form-group">
+                        <label>Wat verkoop je?</label>
+                        <input type="text" id="business" placeholder="Bijv. springrolls, kleding, snacks..." required>
+                    </div>
+                    <button type="submit" class="btn" id="submitBtn">Aanmelden als Vendor 🚀</button>
+                </form>
+                <p class="footer">Wij nemen contact met je op via <strong>WhatsApp</strong><br>om je shop gratis op te zetten.</p>
+            </div>
+        </div>
+        <div id="successSection" class="success">
+            <div class="success-header">
+                <div class="check">🎉</div>
+                <h2>Welkom bij<br>Market<span>Tribe</span>!</h2>
+            </div>
+            <div class="success-body">
+                <p>Je bent aangemeld. We nemen snel contact op via WhatsApp om je shop in te richten.</p>
+                <p class="tribe-text">Wan community. Wan marketplace. Wan tribe. 🧡💙</p>
+            </div>
+        </div>
+    </div>
+    <script>
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxzBlzZxhSvHAqlRNgvY54T_CuqDWXkC_KUYySnxcB3zBZrqNq7tOwzawIhUsEGVR1RGQ/exec';
+        async function submitForm(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Bezig met aanmelden...';
+            const data = {
+                timestamp: new Date().toLocaleString('nl-SR', { timeZone: 'America/Paramaribo' }),
+                naam: document.getElementById('naam').value.trim(),
+                whatsapp: document.getElementById('whatsapp').value.trim(),
+                business: document.getElementById('business').value.trim()
+            };
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST', mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                document.getElementById('formSection').style.display = 'none';
+                document.getElementById('successSection').style.display = 'block';
+            } catch (error) {
+                alert('Er ging iets mis. Probeer het opnieuw of stuur een WhatsApp naar +597 830 8456.');
+                btn.disabled = false;
+                btn.textContent = 'Aanmelden als Vendor 🚀';
+            }
+        }
+    </script>
+</body>
+</html>
